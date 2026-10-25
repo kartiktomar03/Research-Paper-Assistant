@@ -1,0 +1,46 @@
+
+# API keys and secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local development files
+.vscode/
+.idea/
+*.log
+
+# Uploaded PDF files and generated figures
+uploads/
+data/figures/
+data/papers/
+data/uploads/
+
+# Local Qdrant database and application state
+qdrant_storage/
+qdrant_data/
+data/qdrant/
+data/qdrant_storage/
+data/storage/
+*.sqlite
+*.sqlite3
+
+# Model caches
+.cache/
+models/
+huggingface/
+
+# OS generated files
+.DS_Store
+Thumbs.db

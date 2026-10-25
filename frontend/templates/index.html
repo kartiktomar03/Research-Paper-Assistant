@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Research Lab — AI Paper Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="top">
+        <div class="brand">
+          <div class="logo">R</div>
+          <div>
+            <h1>RESEARCH LAB</h1>
+            <p>Document-aware AI · Qdrant-powered RAG</p>
+          </div>
+        </div>
+        <div class="header-actions"><a class="btn secondary nav-link" href="{{ url_for('compare_page') }}">Compare papers ↗</a><div class="pill" id="health">Checking services…</div></div>
+      </header>
+      <section class="hero">
+        <div>
+          <div class="eyebrow">✳ Read papers with evidence</div>
+          <h2>READ LESS.<br />UNDERSTAND <span>MORE.</span></h2>
+          <p>
+            Your research sidekick. Extract the important bits from dense
+            papers, explore tables and figures, and ask questions grounded in
+            the source material.
+          </p>
+          <div class="hero-note">
+            <span class="dot"></span> Upload · Explore · Ask better questions
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="card-kicker">
+            <span>01 / New document</span
+            ><span class="number-tag">PDF → AI</span>
+          </div>
+          <h3>Bring your research.</h3>
+          <p class="muted small">
+            PDF only · maximum 25 MB by default · scanned PDFs may require OCR
+          </p>
+          <form id="uploadForm">
+            <div class="upload">
+              <div class="upload-mark">↑</div>
+              <strong>Choose up to 5 research papers</strong
+              ><input
+                id="pdfFile"
+                type="file"
+                name="file"
+                accept="application/pdf,.pdf"
+                multiple
+                required
+              /><span class="muted small"
+                >Your paper gets a unique document ID.</span
+              >
+            </div>
+            <button class="btn" id="uploadBtn" type="submit">
+              Upload &amp; index papers ↗
+            </button>
+            <div id="uploadStatus" class="status" role="status"></div>
+          </form>
+        </div>
+      </section>
+      <section class="panel library-panel" id="libraryPanel">
+        <div class="section-head" style="margin:0 0 12px">
+          <div><div class="eyebrow">02 / Your library</div><h2>Choose a paper to explore ↗</h2></div>
+          <button class="btn secondary" type="button" id="refreshLibrary">Refresh library ↻</button>
+        </div>
+        <p class="muted small">Select any uploaded paper for individual summaries and Q&amp;A. Use Compare papers for cross-paper analysis and deletion.</p>
+        <div class="library-select-row">
+          <select id="singlePaperSelect" aria-label="Select research paper"><option value="">Select an uploaded paper…</option></select>
+          <button class="btn" id="openPaperBtn" type="button">Open paper ↗</button>
+        </div>
+        <div id="libraryStatus" class="status" role="status"></div>
+      </section>
+      <div id="dashboard" class="hidden">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">✳ Individual paper analysis</div>
+            <h2
+              id="paperTitle"
+              style="
+                margin: 10px 0 4px;
+                font-size: clamp(25px, 3vw, 34px);
+                letter-spacing: -0.06em;
+              "
+            >
+              Research paper
+            </h2>
+            <div id="paperMeta" class="muted small"></div>
+          </div>
+          <button class="btn secondary" id="deleteBtn">
+            Delete document ×
+          </button>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <span>Pages</span><strong id="pageCount">—</strong>
+          </div>
+          <div class="stat">
+            <span>Tables extracted</span><strong id="tableCount">—</strong>
+          </div>
+          <div class="stat">
+            <span>Figures extracted</span><strong id="figureCount">—</strong>
+          </div>
+          <div class="stat">
+            <span>Indexed chunks</span><strong id="chunkCount">—</strong>
+          </div>
+        </div>
+        <div class="workspace">
+          <aside class="panel">
+            <h3>Paper sections ↘</h3>
+            <p class="muted small">Pick a section to generate an AI summary.</p>
+            <div id="topics" class="topic-list"></div>
+          </aside>
+          <main class="panel">
+            <div class="content-grid">
+              <section class="subpanel">
+                <h4>Section summary</h4>
+                <div id="summary" class="scroll markdown">
+                  Choose a section to generate a summary.
+                </div>
+              </section>
+              <section class="subpanel">
+                <h4>Extracted tables</h4>
+                <div id="tables" class="scroll">
+                  <p class="empty">Tables will appear here when detected.</p>
+                </div>
+              </section>
+            </div>
+            <section class="subpanel" style="margin-top: 14px">
+              <h4>Extracted figures</h4>
+              <div id="figures" class="content-grid">
+                <p class="empty">Figures will appear here when detected.</p>
+              </div>
+            </section>
+            <section class="subpanel" style="margin-top: 14px">
+              <h4>Ask this paper ✳</h4>
+              <p class="muted small">
+                Answers are grounded in retrieved chunks. Check the cited
+                page/table/figure for important claims.
+              </p>
+              <div id="messages" class="messages">
+                <div class="bubble ai">
+                  Upload a paper, then ask a question about its methods,
+                  results, tables or figures.
+                </div>
+              </div>
+              <form id="chatForm" class="chat-form">
+                <input
+                  id="question"
+                  maxlength="4000"
+                  placeholder="e.g. What does Table 2 show?"
+                  autocomplete="off"
+                  required
+                /><button class="btn" id="askBtn">Ask ↗</button>
+              </form>
+            </section>
+          </main>
+        </div>
+      </div>
+      <footer>
+        Built with Flask · Qdrant · Sentence Transformers · Groq · PyMuPDF ·
+        pdfplumber
+      </footer>
+    </div>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>

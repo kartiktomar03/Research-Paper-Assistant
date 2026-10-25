@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+data/qdrant
+data/papers
+data/figures
+uploads
+.pytest_cache
+*.zip
+tests/
