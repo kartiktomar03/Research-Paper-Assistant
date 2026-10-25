@@ -1,222 +1,294 @@
-## Separate paper workspaces (new)
+# ResearchLab — AI-Powered Research Paper Assistant
 
-- `/` is the **single-paper workspace**: choose any paper from the library dropdown. Individual summaries, figures/tables and streamed Q&A use that selected paper ID.
-- `/compare` is a **dedicated comparison page**: select 2–5 papers, stream cross-paper comparisons, and permanently delete individual papers from the library.
-- `GET /api/paper/<paper_id>` returns the persisted selected paper's display details (not full-text) so older uploads can be reopened.
-- Deleting a paper removes its indexed vectors, uploaded PDF, extracted figures and metadata; this action cannot be undone.
-- Existing multi-file upload, single-paper streaming, and comparison endpoints remain unchanged. No authentication is provided; do not expose this demo on the public internet.
+An AI-powered research assistant that helps users analyze academic papers, extract tables and figures, generate summaries, and compare multiple research papers using Retrieval-Augmented Generation (RAG).
 
-## Multi-paper comparison (new)
+Built with **Flask, Python, Qdrant, Groq, Sentence Transformers, and FastEmbed**.
 
-- Select up to **5 PDF files** in the upload picker. The browser uploads/indexes them sequentially, preserving successes if one file fails.
-- Select **2–5 papers** in the **Compare research papers** panel and ask a comparison question.
-- Comparison uses Qdrant retrieval filtered separately by each paper ID, adds per-paper metadata and key sections, then streams a Groq answer with paper-wise page sources.
-- Single-paper summary and Q&A continue to work with the most recently uploaded PDF.
-- The catalog persists on disk in `data/papers`. `GET /api/papers` lists available paper IDs and titles. `POST /api/compare/stream` accepts `{ "paper_ids": ["uuid1", "uuid2"], "message": "..." }`.
-- **Title spacing fix:** the first-page title is reconstructed from PyMuPDF word coordinates, not artificially space-joined text spans. Tested with the included *Sufficient Context* PDF.
-- Uploaded PDFs, Qdrant index, `.env` and virtual environments are **not shipped** in this clean ZIP. Re-upload PDFs on first start and reuse your private `.env` and `.venv` locally.
-- Full end-to-end Groq/Qdrant comparison requires live credentials and local dependencies; syntax tests alone cannot validate answer quality.
+### Live Demo
 
-# Research Paper Assistant — organized frontend + backend
+[Launch ResearchLab](https://research-paper-assistant-a639.onrender.com)
 
-## Project layout
+> **Deployment note:** The application is hosted on Render's free tier. Initial loading and PDF indexing may be slow, and large PDF uploads may time out due to limited server resources. Uploaded documents are not permanently stored on Render.
+
+## Overview
+
+Reading and comparing research papers can be time-consuming, especially when important information is distributed across complex sections, tables, and figures.
+
+ResearchLab aims to simplify this workflow through document-aware retrieval and LLM-powered analysis.
+
+Users can upload research papers, explore their contents, ask natural-language questions, and compare findings across multiple documents.
+
+## Key Features
+
+### 1. Research Paper Processing
+
+- Upload up to five PDF files through the interface.
+- Extract page-aware text and document metadata.
+- Identify research paper titles, authors, and abstracts using PDF parsing heuristics.
+- Organize extracted content for retrieval and analysis.
+
+### 2. AI-Powered Summarization
+
+- Generate summaries of research paper sections.
+- Explore methodologies, findings, conclusions, and limitations.
+- Stream generated responses directly to the interface.
+
+### 3. Document Question Answering
+
+- Ask questions about an individual research paper.
+- Retrieve relevant document chunks using semantic search.
+- Generate context-grounded answers with source/page references.
+- Stream responses using Server-Sent Events.
+
+### 4. Multi-Paper Comparison
+
+- Select two to five research papers for cross-document analysis.
+- Compare research methodologies, findings, limitations, and experimental results.
+- Retrieve relevant evidence separately from each selected document.
+- Display paper-wise sources in generated responses.
+
+### 5. Table and Figure Extraction
+
+- Detect structured and borderless tables using multiple extraction strategies.
+- Convert detected tables into a structured Markdown representation.
+- Extract figures using rendered PDF regions and caption-based detection.
+- Preserve available page references and captions.
+
+_Complex tables, scanned pages, and figure boundaries may still require manual verification._
+
+### 6. Research Paper Library
+
+- Select previously uploaded papers for individual analysis.
+- Navigate between single-paper and comparison workspaces.
+- Delete papers and their associated indexed records.
+
+## Technology Stack
+
+| Layer           | Technologies                      |
+| --------------- | --------------------------------- |
+| Frontend        | HTML, CSS, JavaScript             |
+| Backend         | Python, Flask                     |
+| LLM Integration | Groq API                          |
+| Vector Database | Qdrant                            |
+| Embeddings      | Sentence Transformers / FastEmbed |
+| PDF Processing  | PyMuPDF, pdfplumber               |
+| Streaming       | Server-Sent Events (SSE)          |
+| Deployment      | Docker, Render                    |
+| Version Control | Git, GitHub                       |
+
+## System Architecture
+
+```text
+                 Research Paper PDFs
+                         |
+                         v
+                  Flask Backend
+                         |
+                         v
+                 PDF Processing
+                /       |        \
+             Text     Tables    Figures
+                \       |        /
+                         v
+                 Chunk Generation
+                         |
+                         v
+                  Text Embeddings
+                         |
+                         v
+                    Qdrant DB
+                         |
+                 Semantic Retrieval
+                         |
+                         v
+                     Groq LLM
+                         |
+                         v
+            Streaming Response + Sources
+                         |
+                         v
+                   ResearchLab UI
+```
+
+For multi-paper comparison, relevant chunks are retrieved separately for each selected paper before being passed to the language model.
+
+## Project Structure
 
 ```text
 Research-Paper-Assistant/
-├── app.py                     # Start here: python app.py
-├── backend/
-│   ├── app.py                 # Flask API and routes
-│   └── src/
-│       ├── document_pipeline.py  # PDF text/tables/figures/metadata
-│       ├── rag.py             # Qdrant retrieval + lexical reranking
-│       └── llm.py             # Groq prompt handling
-├── frontend/
-│   ├── templates/index.html
-│   └── static/{css/style.css,js/app.js}
-├── tests/                     # Includes provided sample PDF
-├── data/                      # Generated during runtime
-├── uploads/                   # Generated during runtime
-├── requirements.txt
-└── .env.example
+|
+|-- app.py
+|-- backend/
+|   |-- app.py
+|   `-- src/
+|       |-- document_pipeline.py
+|       |-- rag.py
+|       `-- llm.py
+|
+|-- frontend/
+|   |-- templates/
+|   `-- static/
+|       |-- css/
+|       `-- js/
+|
+|-- tests/
+|-- data/
+|-- uploads/
+|-- Dockerfile
+|-- docker-compose.yml
+|-- render.yaml
+|-- requirements.txt
+|-- requirements.render.txt
+|-- .env.example
+`-- README.md
 ```
 
-## Start in Windows VS Code
+## Local Installation
 
-Open the **project root** (the folder containing `app.py`). Move your existing `.venv` into this root, or create a new virtual environment. Keep your `.env` in the root; never share it.
+### Prerequisites
+
+- Python 3.11 recommended
+- Git
+- Groq API key
+- Internet connection for initial model download
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/kartiktomar03/Research-Paper-Assistant.git
+cd Research-Paper-Assistant
+```
+
+### 2. Create a virtual environment
+
+Windows:
 
 ```powershell
+py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
+```
+
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+Create a `.env` file in the project root using `.env.example` as a reference.
+
+For local testing:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+LLM_MODEL=openai/gpt-oss-120b
+
+EMBEDDING_BACKEND=sentence-transformers
+
+QDRANT_URL=
+QDRANT_API_KEY=
+```
+
+Leaving `QDRANT_URL` empty enables local embedded Qdrant mode.
+
+Never commit `.env` or actual API keys.
+
+### 5. Start the application
+
+```bash
 python app.py
 ```
 
-Open http://127.0.0.1:5000. Upload PDFs **again** after upgrading: the old Qdrant local index is intentionally not bundled, and re-indexing uses the improved extraction pipeline.
+Open:
 
-## Improvements and caveats
+`http://127.0.0.1:5000`
 
-- Tables: line-based + text-based detection, spatial deduplication, and table-caption validation to filter false positives. Extremely irregular/merged/scanned tables still need manual checks or OCR.
-- Figures: crop rendered page regions near actual Figure captions (works with vectors), with raster fallback on uncaptioned pages. These are image crops, not guaranteed semantic segmentation; visually review crops.
-- Metadata: first-page title and author heuristic + abstract extraction. Verify unusual author layouts.
-- RAG: remove strict score cutoff, combine semantic results with keyword overlap, inject metadata for author/abstract questions and structured tables for table questions. Q&A requires Groq credentials and re-indexed PDFs.
-- `GROQ_VISION_MODEL` remains optional. Without a working vision model, figures can be viewed, but the assistant **cannot reliably interpret numeric chart values**.
-- The included PDF is a test fixture from the provided archive; remove `tests/sample_research_paper.pdf` if you do not want to keep it.
+The comparison workspace is available at:
 
-## Limitations and test status
+`http://127.0.0.1:5000/compare`
 
-Extraction was smoke-tested using the included research PDF. Python source was syntax-checked. Full Groq and Qdrant integration was not exercised in this isolated environment, so check Q&A with your API key and embedding model locally. No 100% table/figure accuracy is claimed.
+## Deployment
 
----
+The project includes a Docker-based configuration for Render.
 
-# Research Paper Assistant — Qdrant RAG
+The hosted version uses:
 
-A Flask-based research-paper assistant that extracts PDF text, tables, and embedded figures, indexes the content in Qdrant, and answers questions with retrieved source references.
+- **Render:** Flask application hosting
+- **Qdrant Cloud:** Vector storage
+- **Groq:** LLM inference
+- **FastEmbed:** Lightweight ONNX-based embeddings
 
-## Features
+Required deployment environment variables include:
 
-- PDF upload validation and configurable upload-size limit.
-- Page-aware text extraction with PyMuPDF.
-- Table extraction with `pdfplumber`, rendered as Markdown and indexed for retrieval.
-- Embedded figure extraction with captions/page references. Optional figure descriptions through a Groq vision model when `GROQ_VISION_MODEL` is configured.
-- Sentence Transformers embeddings (`all-MiniLM-L6-v2`) and Qdrant vector search.
-- Document isolation: every indexed chunk includes a unique `paper_id`, and retrieval filters by that ID.
-- Section summaries and grounded Q&A with source/page/table/figure labels.
-- Local embedded Qdrant mode for development; Docker Compose Qdrant server mode for a more realistic deployment.
-- Delete endpoint removes the paper record, uploaded PDF, extracted figures, and its vector points.
+```env
+GROQ_API_KEY=your_api_key
+LLM_MODEL=openai/gpt-oss-120b
 
-## Important limitations
+QDRANT_URL=your_qdrant_cloud_url
+QDRANT_API_KEY=your_qdrant_api_key
+QDRANT_COLLECTION=research_paper_render
 
-- This is a strong development/demo baseline, not a security-audited multi-tenant production service. It has no user accounts, ownership/authorization model, malware scanning, or distributed job queue. Anyone who obtains a paper ID can query/delete that document; add authentication and ownership checks before exposing it publicly.
-- Scanned PDFs need OCR before text/table extraction. Current pipeline detects empty text and reports that OCR may be required; it does not run OCR automatically.
-- PDF table extraction depends on layout and can fail on complex merged cells, rotated tables, or image-only tables.
-- Figure extraction detects embedded raster images, not every vector drawing/chart. Optional vision descriptions are best-effort and must be verified for scientific accuracy. Exact numeric chart data should not be inferred from pixels.
-- Qdrant is a vector database, not a PDF parser. Extraction and retrieval are separate pipeline stages.
-- Section detection uses common heading patterns and falls back to a full-paper section when it cannot detect headings.
-- Retrieval score threshold needs tuning on a representative test set; similarity scores are not calibrated probabilities.
+EMBEDDING_BACKEND=fastembed
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_DIMENSION=384
+```
 
-## Requirements
+### Free Hosting Limitations
 
-- Python 3.11 recommended.
-- A Groq API key for summaries and answer generation.
-- First run needs network access to download the embedding model unless cached locally.
+Render Free has limited memory and CPU resources. Large research papers can result in slow indexing, request timeouts, or temporary service unavailability.
 
-## Local setup (embedded Qdrant)
+Uploaded PDFs, extracted figures, and paper metadata are stored on the instance's local filesystem, which is not persistent across restarts or redeployments. Qdrant Cloud vectors may remain even when local paper records are lost.
 
-1. Create and activate a virtual environment.
+The current deployment is intended as a demonstration, not a production-ready document storage service.
 
-   **Windows PowerShell**
-   ```powershell
-   py -3.11 -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
-   Copy-Item .env.example .env
-   ```
+## API Overview
 
-   **macOS/Linux**
-   ```bash
-   python3.11 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   cp .env.example .env
-   ```
+| Endpoint                       | Purpose                            |
+| ------------------------------ | ---------------------------------- |
+| `GET /api/health`              | Application health status          |
+| `GET /api/papers`              | List indexed papers                |
+| `POST /api/upload`             | Upload and process a PDF           |
+| `GET /api/paper/<paper_id>`    | Retrieve paper details             |
+| `POST /api/summary/stream`     | Stream section summary             |
+| `POST /api/chat/stream`        | Stream document Q&A                |
+| `POST /api/compare/stream`     | Stream multi-paper comparison      |
+| `DELETE /api/paper/<paper_id>` | Delete a paper and associated data |
 
-2. Add your real `GROQ_API_KEY` in `.env`. Do not commit `.env`.
-3. Run the application:
-   ```bash
-   python app.py
-   ```
-4. Open `http://127.0.0.1:5000`.
+## Current Limitations
 
-By default, Qdrant uses persistent local storage at `./data/qdrant`. Do not run multiple app processes against the same embedded Qdrant path. For multiple workers or deployment, use a Qdrant server or Qdrant Cloud.
+- Complex merged-cell and borderless tables may not always be reconstructed accurately.
+- Figure extraction can occasionally include surrounding content.
+- Scanned PDFs require additional OCR support.
+- LLM-generated information should be checked against the original paper.
+- Public deployment currently lacks user authentication and document ownership controls.
+- Render Free performance is limited for compute-intensive PDF processing.
 
-## Docker Compose (Qdrant server + Flask)
+## Future Improvements
 
-1. Copy `.env.example` to `.env` and add `GROQ_API_KEY`.
-2. Start the services:
-   ```bash
-   docker compose up --build
-   ```
-3. Open `http://localhost:5000`; Qdrant dashboard/API is at `http://localhost:6333`.
+- [ ] Background PDF processing with progress tracking
+- [ ] Improved document-layout recognition
+- [ ] OCR support for scanned research papers
+- [ ] Session-based document isolation and automatic cleanup
+- [ ] Faster embedding and indexing pipeline
+- [ ] Persistent document storage
+- [ ] Authentication and API rate limiting
+- [ ] Improved extraction accuracy evaluation
 
-The Compose setup overrides `QDRANT_URL` to `http://qdrant:6333`. The app uses one Gunicorn worker to avoid concurrent duplicate model loading; scale only after considering model memory, storage, request processing, and Qdrant server behavior.
+## Testing
 
-## Optional figure understanding
+The repository includes tests for document processing, extraction logic, and streaming behavior.
 
-Set `GROQ_VISION_MODEL` to a vision model currently available to your Groq account. Model names and availability change, so verify against the provider's current model list. If not configured or unavailable, images and captions are still extracted; the upload does not fail just because vision descriptions are unavailable.
+```bash
+python -m pytest
+```
 
-## API overview
+Additional end-to-end testing with live Groq and Qdrant Cloud services is needed, particularly under free hosting resource constraints.
 
-- `GET /api/health` — service health and vector backend mode.
-- `POST /api/upload` — multipart form field `file` containing a PDF.
-- `POST /api/summary` — JSON: `{"paper_id":"...","topic":"..."}`.
-- `POST /api/chat` — JSON: `{"paper_id":"...","message":"..."}`; returns answer and retrieved sources.
-- `GET /api/figure/<paper_id>/<figure_name>` — serves an extracted figure belonging to the paper path.
-- `DELETE /api/paper/<paper_id>` — deletes the paper and indexed vectors.
+## Attribution
 
-## Suggested engineering next steps
+This project was developed further from the supplied Research-Paper-Analysis-Project codebase. Upstream licensing and attribution requirements should be reviewed and preserved where applicable.
 
-1. Add authentication and document ownership checks before public deployment.
-2. Add OCR fallback for scanned PDFs (for example, Tesseract or a document parsing service).
-3. Add automated tests for cross-document retrieval isolation, malformed uploads, PDF table fixtures, and deletion.
-4. Add background jobs for large PDFs and enforce API rate limits.
-5. Evaluate recall@k and answer faithfulness on a small labelled set before adjusting chunking or retrieval thresholds.
-6. Add citations linking to actual PDF page previews and use a more layout-aware parser for complex tables.
+## Disclaimer
 
-## License / attribution
-
-This repository is based on the supplied `Research-Paper-Analysis-Project` source. Review the upstream repository's license and retain attribution/comply with it before publishing a modified version. Document your own changes accurately on your resume.
-
-## Live streaming output
-
-The UI uses `fetch()` + Server-Sent Events over POST to show real Groq token deltas as they arrive. New endpoints: `POST /api/summary/stream` with `{ "paper_id": "...", "topic": "..." }` and `POST /api/chat/stream` with `{ "paper_id": "...", "message": "..." }`. Each frame is `event: delta` (`{"text":"..."}`), `event: done` (sources for chat), or `event: error`. Existing `/api/summary` and `/api/chat` JSON routes remain available. Streaming requires a valid Groq key, access to Groq, and proxy buffering disabled. If your hosting proxy buffers responses, disable buffering for these routes.
-
-
----
-
-## Free deployment on Render (Docker + Qdrant Cloud)
-
-This setup is a **temporary public demo**, not permanent document storage. The
-existing local Python workflow (`requirements.txt`, `.venv`, `python app.py`)
-stays unchanged. `Dockerfile` installs `requirements.render.txt` instead of
-PyTorch and runs `FastEmbed` (ONNX), with the same 384-dimension MiniLM model.
-This reduces memory usage but **does not guarantee** a successful run in
-Render's 512 MB free instance; large PDFs can still exceed memory/time limits.
-
-1. Remove `.env`, `.venv`, personal PDFs and any API keys from the project before
-   putting it on GitHub. `.gitignore` excludes generated artifacts.
-2. Create a **Qdrant Cloud free cluster**, then copy its cluster URL and API key.
-3. Push the project to GitHub. On [Render](https://dashboard.render.com), choose
-   **New → Web Service**, connect the repository, choose **Docker** and **Free**.
-   The `render.yaml` also documents the recommended settings.
-4. In Render's **Environment** tab, set `GROQ_API_KEY`, `QDRANT_URL`, and
-   `QDRANT_API_KEY` as secret environment variables (never commit real keys).
-   `LLM_MODEL` must be a Groq model actually enabled for your account.
-   Set `EMBEDDING_BACKEND=fastembed`, `EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2`,
-   `EMBEDDING_DIMENSION=384`. The Dockerfile and render.yaml provide these defaults.
-5. Deploy. Visit `/api/health`, then upload a **small text-based PDF** and check
-   its single-paper summary, Q&A streaming, figure previews and `/compare`.
-
-**IMPORTANT — Render Free loses document data.** Render Free's filesystem is
-ephemeral and can be wiped after 15 minutes of inactivity, restart or redeploy.
-Qdrant Cloud preserves **vectors**, but this app saves **paper JSON, titles,
-sections, figures and PDFs locally** in `data/` and `uploads/`. After a restart,
-the paper list will be empty and comparison cannot find old paper records, even
-if vectors are still in Qdrant. Re-upload documents after a restart. To make
-papers truly persistent, add an external persistent object/metadata store and
-adapt the backend; Qdrant Cloud alone is not enough.
-
-**Embedding note:** ONNX FastEmbed and local PyTorch MiniLM may give slightly
-different embeddings. Re-index documents when changing backends; do not assume
-that an existing cloud collection is compatible just because dimensions match.
-For isolation, create a fresh Qdrant collection for the deployed app (e.g. set
-`QDRANT_COLLECTION=research_paper_render` in Render environment).
-
-**Privacy/security:** the current app does not require user login. Anyone with
-the public URL can upload documents, list papers, delete documents and trigger
-Groq API usage. Only upload non-sensitive, publicly shareable test PDFs; avoid
-sharing the link widely until authentication and abuse protection are added.
-`MAX_UPLOAD_MB=10` in the Render config limits a single upload but is not a
-complete abuse prevention measure.
-
-**If the deployment crashes:** inspect Render logs. A 512 MB out-of-memory
-error cannot be fixed by editing README; try smaller PDFs or a more capable
-service. Initial embedding model download/cold start can be slow.
+ResearchLab is designed as an academic research assistance tool. Generated summaries, comparisons, extracted numerical values, and citations should be verified against the original research papers before academic or professional use.
