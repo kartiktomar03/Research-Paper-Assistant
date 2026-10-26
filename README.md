@@ -292,3 +292,10 @@ This project was developed further from the supplied Research-Paper-Analysis-Pro
 ## Disclaimer
 
 ResearchLab is designed as an academic research assistance tool. Generated summaries, comparisons, extracted numerical values, and citations should be verified against the original research papers before academic or professional use.
+
+## Project Showcase
+
+Explore the project's features, architecture,
+screenshots, and local setup instructions.
+
+[Visit ResearchLab Showcase](https://kartiktomar03.github.io/ResearchLab-Showcase/)
